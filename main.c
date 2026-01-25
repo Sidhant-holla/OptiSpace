@@ -1,17 +1,7 @@
 #include <stdio.h>
-#include <omp.h> // The OpenMP Library
 #include "lib/include/raylib.h"
 
 int main() {
-    // 1. Console Test (Check the Terminal)
-    printf("Testing OpenMP...\n");
-    
-    // This block runs in parallel!
-    #pragma omp parallel
-    {
-        int id = omp_get_thread_num();
-        printf("Hello from Thread %d!\n", id);
-    }
 
     // 2. Graphics Test (Check the Window)
     InitWindow(800, 450, "CrowdControl - OpenMP Ready");
