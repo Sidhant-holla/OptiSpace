@@ -46,25 +46,21 @@ int main() {
                 dx /= length;
                 dy /= length;
             }
-            if(Point[i].x>ScreenWidth){
+            if(Point[i].x>ScreenWidth-Radius){
                 Point[i].x= ScreenWidth-Radius;
                 Point[i].vx *= -1 ;
-                Point[i].vy*=-1;
             }
-            if(Point[i].x<0){
+            if(Point[i].x<Radius){
                 Point[i].x= Radius;
                 Point[i].vx *= -1 ;
-                Point[i].vy*=-1;
             }
-            if(Point[i].y>ScreenHeight){
+            if(Point[i].y>ScreenHeight-Radius){
                 Point[i].y=ScreenHeight-Radius;
                 Point[i].vy*=-1;
-                Point[i].vx*=-1;
             }
-            if(Point[i].y<0){
+            if(Point[i].y<Radius){
                 Point[i].y=Radius;
                 Point[i].vy*=-1;
-                Point[i].vx*=-1;
             }
             float desiredVx = -1*dx*Point[i].speed;
             float desiredVy = -1*dy*Point[i].speed;
@@ -78,6 +74,11 @@ int main() {
             }
             Point[i].vx += dt*ax;
             Point[i].vy += dt*ay;
+            float vMagnitude = sqrt((Point[i].vx*Point[i].vx)+(Point[i].vy*Point[i].vy));
+            if(vMagnitude>MaxSpeed){
+                Point[i].vx = (Point[i].vx/vMagnitude)*MaxSpeed;
+                Point[i].vy = (Point[i].vy/vMagnitude)*MaxSpeed;
+            }
             Point[i].x += dt*Point[i].vx;
             Point[i].y += dt*Point[i].vy;
         }
