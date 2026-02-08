@@ -1,0 +1,28 @@
+#ifndef KDTREE_H
+#define KDTREE_H
+
+// -- 1. Data Structures --
+typedef struct {
+    float x, y;
+    int index;
+} KDPoint;
+
+typedef struct KDNode {
+    KDPoint data;
+    struct KDNode *left, *right;
+    int axis; 
+} KDNode;
+
+typedef struct {
+    KDNode* nodePool; 
+    int poolIdx;      
+    int maxPoints;
+    KDNode* root;
+} KDTree;
+
+KDTree* InitKDTree(int maxPoints);
+void RebuildKDTree(KDTree* tree, KDPoint* points, int count);
+void QueryKDTree(KDNode* node, float x, float y, float radius, int* results, int* count);
+void FreeKDTree(KDTree* tree);
+
+#endif
