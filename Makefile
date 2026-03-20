@@ -6,8 +6,7 @@ LIBS = -L lib/lib -lraylib -lopengl32 -lgdi32 -lwinmm
 
 # 2. Files
 TARGET = simulation.exe
-SOURCES = main.c agent.c
-# Later, you will change this to: SOURCES = main.c engine.c physics.c
+SOURCES = main.c agent.c bruteforce.c
 
 # 3. Build Rules
 all:

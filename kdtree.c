@@ -4,14 +4,14 @@
 #include<math.h>
 
 int CmpX(const void*a, const void*b){
-    KDPoint* p1 = (KDPoint*)a;
-    KDPoint* p2 = (KDPoint*)b;
+    SpatialPoint* p1 = (SpatialPoint*)a;
+    SpatialPoint* p2 = (SpatialPoint*)b;
     return (p1->x > p2->x) - (p1->x < p2->x);
 }
 
 int CmpY(const void*a, const void*b){
-    KDPoint* p1 = (KDPoint*)a;
-    KDPoint* p2 = (KDPoint*)b;
+    SpatialPoint* p1 = (SpatialPoint*)a;
+    SpatialPoint* p2 = (SpatialPoint*)b;
     return (p1->y > p2->y) - (p1->y < p2->y);
 }
 
@@ -24,14 +24,14 @@ KDTree* InitKDTree(int maxPoints){
     return tree;
 }
 
-KDNode* BuildRec(KDTree* tree, KDPoint* points, int n, int depth){
+KDNode* BuildRec(KDTree* tree, SpatialPoint* points, int n, int depth){
     if(n<=0) return NULL;
     int axis = depth%2;
     if(axis == 0){
-        qsort(points, n, sizeof(KDPoint),CmpX);
+        qsort(points, n, sizeof(SpatialPoint),CmpX);
     }
     else{
-        qsort(points, n, sizeof(KDPoint), CmpY);
+        qsort(points, n, sizeof(SpatialPoint), CmpY);
     }
     int mid = n/2;
     KDNode* node = &tree->nodePool[tree->poolIdx++];

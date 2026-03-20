@@ -12,23 +12,18 @@ int main() {
     srand(time(NULL));
 
     Agent Point[AgentCount];
-    for (int i = 0; i < AgentCount; i++){
-        Point[i].x = GetRandomValue(Radius, ScreenWidth-Radius);
-        Point[i].y = GetRandomValue(Radius, ScreenHeight-Radius);
-        Point[i].vx = 0.0f;
-        Point[i].vy = 0.0f;
-        Point[i].speed = GetRandomValue(50, MaxSpeed*100)/100.0f;
-        Point[i].color = BLUE;
-    }
+    InitAgents(Point, AgentCount);
+
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         Vector2 mousePos = GetMousePosition();
         ComputePerception(Point, AgentCount);
-        UpdatePhysics(Point, AgentCount, mousePos, dt);
+        UpdatePhysics(Point, AgentCount, mousePos.x, mousePos.y, dt);
         BeginDrawing();
         ClearBackground(RAYWHITE);
         for (int i = 0; i < AgentCount; i++) {
-            DrawCircle((int)Point[i].x, (int)Point[i].y, Radius, Point[i].color);
+            Color c = Point[i].neighbourCount > 0 ? RED : BLUE;
+            DrawCircle((int)Point[i].x, (int)Point[i].y, Radius, c);
         }
         DrawText("Modular Code: Sense -> Act -> Draw", 10, 10, 20, DARKGRAY);
         EndDrawing();
@@ -37,6 +32,3 @@ int main() {
     CloseWindow();
     return 0;
 }
-
-    
-

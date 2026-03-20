@@ -1,55 +1,59 @@
 #include "agent.h"
 #include "config.h"
+#include "spatial.h"
+#include "bruteforce.h"
 #include <math.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 
 void InitAgents(Agent agents[], int count) {
     for (int i = 0; i < count; i++) {
-        agents[i].x = GetRandomValue(Radius, ScreenWidth - Radius);
-        agents[i].y = GetRandomValue(Radius, ScreenHeight - Radius);
+        agents[i].x = Radius + rand() % (ScreenWidth - 2 * Radius);
+        agents[i].y = Radius + rand() % (ScreenHeight - 2 * Radius);
         agents[i].vx = 0.0f;
         agents[i].vy = 0.0f;
-        agents[i].speed = GetRandomValue(50, (int)(MaxSpeed * 100)) / 100.0f;
-        agents[i].color = BLUE;
+        agents[i].speed = (50 + rand() % ((int)(MaxSpeed * 100) - 50)) / 100.0f;
         agents[i].sepVx = 0.0f;
         agents[i].sepVy = 0.0f;
+        agents[i].neighbourCount = 0;
     }
 }
 
 void ComputePerception(Agent Point[], int count) {
-    float radiusSquare = NeighbourRadius * NeighbourRadius;
+    SpatialPoint points[count];
+    for (int i = 0; i < count; i++) {
+        points[i].x = Point[i].x;
+        points[i].y = Point[i].y;
+        points[i].index = i;
+    }
+
+    int results[count];
 
     for (int i = 0; i < count; i++) {
         int neighbourCount = 0;
-        Point[i].color = BLUE;
         Point[i].sepVx = 0;
         Point[i].sepVy = 0;
 
-        for (int j = 0; j < count; j++) {
-            if (i == j) continue;
+        QueryBruteForce(points, count, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount);
 
-            float dx = Point[i].x - Point[j].x;
-            float dy = Point[i].y - Point[j].y;
-            float distSquare = dx * dx + dy * dy;
+        for (int j = 0; j < neighbourCount; j++) {
+            int ni = results[j];
+            float dx = Point[i].x - Point[ni].x;
+            float dy = Point[i].y - Point[ni].y;
+            float distSq = dx * dx + dy * dy;
+            Point[i].sepVx += dx / distSq;
+            Point[i].sepVy += dy / distSq;
+        }
 
-            if (distSquare < radiusSquare && distSquare > 0.001f) {
-                neighbourCount++;
-                Point[i].sepVx += dx / distSquare;
-                Point[i].sepVy += dy / distSquare;
-            }
-        }
-        if (neighbourCount > 0) {
-            Point[i].color = RED;
-        }
+        Point[i].neighbourCount = neighbourCount;
     }
 }
 
-void UpdatePhysics(Agent Point[], int count, Vector2 targetPos, float dt) {
+void UpdatePhysics(Agent Point[], int count, float targetX, float targetY, float dt) {
     for (int i = 0; i < count; i++) {
-        float dx = Point[i].x - targetPos.x;
-        float dy = Point[i].y - targetPos.y;
+        float dx = Point[i].x - targetX;
+        float dy = Point[i].y - targetY;
         float length = sqrtf(dx * dx + dy * dy);
-        
+
         float fleeVx = 0;
         float fleeVy = 0;
 
