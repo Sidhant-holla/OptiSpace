@@ -13,11 +13,15 @@ int main() {
 
     Agent Point[AgentCount];
     InitAgents(Point, AgentCount);
+    int useKDTree = 0;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         Vector2 mousePos = GetMousePosition();
-        ComputePerception(Point, AgentCount);
+
+        if (IsKeyPressed(KEY_T)) useKDTree = !useKDTree;
+
+        ComputePerception(Point, AgentCount, useKDTree);
         UpdatePhysics(Point, AgentCount, mousePos.x, mousePos.y, dt);
         BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -25,7 +29,7 @@ int main() {
             Color c = Point[i].neighbourCount > 0 ? RED : BLUE;
             DrawCircle((int)Point[i].x, (int)Point[i].y, Radius, c);
         }
-        DrawText("Modular Code: Sense -> Act -> Draw", 10, 10, 20, DARKGRAY);
+        DrawText(useKDTree ? "Mode: KD Tree [T to toggle]" : "Mode: Brute Force [T to toggle]", 10, 10, 20, DARKGRAY);
         EndDrawing();
     }
 

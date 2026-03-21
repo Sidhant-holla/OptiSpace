@@ -2,12 +2,12 @@
 #define CONFIG_H
 
 // --- Window Settings ---
-#define ScreenWidth 1600
-#define ScreenHeight 800
+#define ScreenWidth 3200
+#define ScreenHeight 1600
 #define TargetFPS 60
 
 // --- Agent Settings ---
-#define AgentCount 200    
+#define AgentCount 20000
 #define Radius 5
 #define MaxSpeed 400.0f
 #define MaxForce 400.0f

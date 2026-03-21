@@ -2,8 +2,11 @@
 #include "config.h"
 #include "spatial.h"
 #include "bruteforce.h"
+#include "kdtree.h"
 #include <math.h>
 #include <stdlib.h>
+
+static KDTree* tree = NULL;
 
 void InitAgents(Agent agents[], int count) {
     for (int i = 0; i < count; i++) {
@@ -18,12 +21,17 @@ void InitAgents(Agent agents[], int count) {
     }
 }
 
-void ComputePerception(Agent Point[], int count) {
+void ComputePerception(Agent Point[], int count, int useKDTree) {
     SpatialPoint points[count];
     for (int i = 0; i < count; i++) {
         points[i].x = Point[i].x;
         points[i].y = Point[i].y;
         points[i].index = i;
+    }
+
+    if (useKDTree) {
+        if (!tree) tree = InitKDTree(count);
+        RebuildKDTree(tree, points, count);
     }
 
     int results[count];
@@ -33,7 +41,11 @@ void ComputePerception(Agent Point[], int count) {
         Point[i].sepVx = 0;
         Point[i].sepVy = 0;
 
-        QueryBruteForce(points, count, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount);
+        if (useKDTree) {
+            QueryKDTree(tree->root, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount);
+        } else {
+            QueryBruteForce(points, count, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount);
+        }
 
         for (int j = 0; j < neighbourCount; j++) {
             int ni = results[j];

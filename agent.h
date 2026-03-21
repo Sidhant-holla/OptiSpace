@@ -10,7 +10,7 @@ typedef struct {
 } Agent;
 
 void InitAgents(Agent agents[], int count);
-void ComputePerception(Agent agents[], int count);
+void ComputePerception(Agent agents[], int count, int useKDTree);
 void UpdatePhysics(Agent agents[], int count, float targetX, float targetY, float dt);
 
 #endif
