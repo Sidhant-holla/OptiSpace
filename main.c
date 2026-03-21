@@ -29,10 +29,13 @@ int main() {
             Color c = Point[i].neighbourCount > 0 ? RED : BLUE;
             DrawCircle((int)Point[i].x, (int)Point[i].y, Radius, c);
         }
-        DrawText(useKDTree ? "Mode: KD Tree [T to toggle]" : "Mode: Brute Force [T to toggle]", 10, 10, 20, DARKGRAY);
+        DrawRectangle(0, 0, ScreenWidth, UIHeight, RAYWHITE);
+        DrawText(useKDTree ? "Mode: KD Tree [T to toggle]" : "Mode: Brute Force [T to toggle]", 10, 15, 20, DARKGRAY);
+        DrawFPS(10, 35);
         EndDrawing();
     }
 
+    CleanupAgents();
     CloseWindow();
     return 0;
 }

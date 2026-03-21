@@ -11,7 +11,7 @@ static KDTree* tree = NULL;
 void InitAgents(Agent agents[], int count) {
     for (int i = 0; i < count; i++) {
         agents[i].x = Radius + rand() % (ScreenWidth - 2 * Radius);
-        agents[i].y = Radius + rand() % (ScreenHeight - 2 * Radius);
+        agents[i].y = UIHeight + Radius + rand() % (ScreenHeight - UIHeight - 2 * Radius);
         agents[i].vx = 0.0f;
         agents[i].vy = 0.0f;
         agents[i].speed = (50 + rand() % ((int)(MaxSpeed * 100) - 50)) / 100.0f;
@@ -104,6 +104,10 @@ void UpdatePhysics(Agent Point[], int count, float targetX, float targetY, float
         if (Point[i].x > ScreenWidth - Radius) { Point[i].x = ScreenWidth - Radius; Point[i].vx *= -1; }
         if (Point[i].x < Radius) { Point[i].x = Radius; Point[i].vx *= -1; }
         if (Point[i].y > ScreenHeight - Radius) { Point[i].y = ScreenHeight - Radius; Point[i].vy *= -1; }
-        if (Point[i].y < Radius) { Point[i].y = Radius; Point[i].vy *= -1; }
+        if (Point[i].y < UIHeight + Radius) { Point[i].y = UIHeight + Radius; Point[i].vy *= -1; }
     }
+}
+
+void CleanupAgents(void) {
+    if (tree) { FreeKDTree(tree); tree = NULL; }
 }
