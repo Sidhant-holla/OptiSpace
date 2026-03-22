@@ -31,7 +31,7 @@ void ComputePerception(Agent Point[], int count, int useKDTree) {
 
     if (useKDTree) {
         if (!tree) tree = InitKDTree(count);
-        RebuildKDTree(tree, points, count);
+        RebuildKDTree_InPlace(tree, points, count);
     }
 
     int results[count];

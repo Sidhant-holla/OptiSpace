@@ -42,11 +42,9 @@ KDNode* BuildRec(KDTree* tree, SpatialPoint* points, int n, int depth){
     return node;
 }
 
-void RebuildKDTree(KDTree *tree, SpatialPoint *points, int n ){
+void RebuildKDTree_InPlace(KDTree *tree, SpatialPoint *points, int n ){
     tree->poolIdx = 0;
-    SpatialPoint temp[n];
-    memcpy(temp, points, sizeof(SpatialPoint) * n);
-    tree->root = BuildRec(tree, temp, n, 0);
+    tree->root = BuildRec(tree, points, n, 0);
 }
 
 void QueryKDTree(KDNode *node, float x, float y, float radius, int* results, int* count){
