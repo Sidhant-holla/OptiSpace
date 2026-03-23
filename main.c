@@ -11,7 +11,7 @@ int main() {
     SetTargetFPS(60);
     srand(time(NULL));
 
-    Agent Point[AgentCount];
+    Agent* Point = (Agent*)malloc(sizeof(Agent) * AgentCount);
     InitAgents(Point, AgentCount);
     int useKDTree = 0;
 
@@ -35,6 +35,7 @@ int main() {
         EndDrawing();
     }
 
+    free(Point);
     CleanupAgents();
     CloseWindow();
     return 0;

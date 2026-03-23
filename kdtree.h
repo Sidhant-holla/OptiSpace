@@ -18,7 +18,7 @@ typedef struct {
 
 KDTree* InitKDTree(int maxPoints);
 void RebuildKDTree_InPlace(KDTree* tree, SpatialPoint* points, int count);
-void QueryKDTree(KDNode* node, float x, float y, float radius, int* results, int* count);
+void QueryKDTree(KDNode* node, float x, float y, float radius, int* results, int* count, int maxResults);
 void FreeKDTree(KDTree* tree);
 
 #endif

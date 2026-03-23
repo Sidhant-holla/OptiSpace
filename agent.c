@@ -7,8 +7,10 @@
 #include <stdlib.h>
 
 static KDTree* tree = NULL;
+static SpatialPoint* spatialBuffer = NULL;
 
 void InitAgents(Agent agents[], int count) {
+    spatialBuffer = (SpatialPoint*)malloc(sizeof(SpatialPoint) * count);
     for (int i = 0; i < count; i++) {
         agents[i].x = Radius + rand() % (ScreenWidth - 2 * Radius);
         agents[i].y = UIHeight + Radius + rand() % (ScreenHeight - UIHeight - 2 * Radius);
@@ -22,29 +24,28 @@ void InitAgents(Agent agents[], int count) {
 }
 
 void ComputePerception(Agent Point[], int count, int useKDTree) {
-    SpatialPoint points[count];
     for (int i = 0; i < count; i++) {
-        points[i].x = Point[i].x;
-        points[i].y = Point[i].y;
-        points[i].index = i;
+        spatialBuffer[i].x = Point[i].x;
+        spatialBuffer[i].y = Point[i].y;
+        spatialBuffer[i].index = i;
     }
 
     if (useKDTree) {
         if (!tree) tree = InitKDTree(count);
-        RebuildKDTree_InPlace(tree, points, count);
+        RebuildKDTree_InPlace(tree, spatialBuffer, count);
     }
-
-    int results[count];
 
     for (int i = 0; i < count; i++) {
         int neighbourCount = 0;
         Point[i].sepVx = 0;
         Point[i].sepVy = 0;
 
+        int results[MaxNeighbours];
+
         if (useKDTree) {
-            QueryKDTree(tree->root, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount);
+            QueryKDTree(tree->root, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
         } else {
-            QueryBruteForce(points, count, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount);
+            QueryBruteForce(spatialBuffer, count, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
         }
 
         for (int j = 0; j < neighbourCount; j++) {
@@ -110,4 +111,5 @@ void UpdatePhysics(Agent Point[], int count, float targetX, float targetY, float
 
 void CleanupAgents(void) {
     if (tree) { FreeKDTree(tree); tree = NULL; }
+    if (spatialBuffer) { free(spatialBuffer); spatialBuffer = NULL; }
 }

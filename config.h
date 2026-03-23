@@ -8,10 +8,13 @@
 #define UIHeight 50
 
 // --- Agent Settings ---
-#define AgentCount 10000
+#define AgentCount 20000
 #define Radius 5
 #define MaxSpeed 400.0f
 #define MaxForce 400.0f
+
+// --- Query Settings ---
+#define MaxNeighbours 512
 
 // --- Behavior Settings ---
 #define NeighbourRadius 50.0f
