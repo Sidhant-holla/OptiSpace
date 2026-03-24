@@ -1,7 +1,8 @@
 // Agent behavior uses Reynolds flocking model with three forces:
-//   Flee       - repel from cursor 
+//   Flee       - repel from fire source
 //   Separation - repel from nearby neighbors (inverse-square)
 //   Alignment  - steer toward average neighbor velocity
+//   Exit seek  - steer toward exit zone
 // Forces are combined into a desired velocity, steered toward, clamped, then Euler-integrated.
 
 #include "agent.h"
@@ -14,37 +15,56 @@
 
 static KDTree* tree = NULL;
 static SpatialPoint* spatialBuffer = NULL;
+static int allocatedCapacity = 0;
+
+static void EnsureCapacity(int count) {
+    if (count <= allocatedCapacity) return;
+    allocatedCapacity = count + count / 2; // grow by 1.5x
+    spatialBuffer = (SpatialPoint*)realloc(spatialBuffer, sizeof(SpatialPoint) * allocatedCapacity);
+    if (tree) { FreeKDTree(tree); tree = NULL; }
+    tree = InitKDTree(allocatedCapacity);
+}
 
 void InitAgents(Agent agents[], int count) {
-    if (spatialBuffer) free(spatialBuffer);
-    spatialBuffer = (SpatialPoint*)malloc(sizeof(SpatialPoint) * count);
+    EnsureCapacity(count);
+    float minX = ROOM_X + WALL_THICK + Radius;
+    float maxX = ROOM_X + ROOM_W - WALL_THICK - Radius;
+    float minY = ROOM_Y + WALL_THICK + Radius;
+    float maxY = ROOM_Y + ROOM_H - WALL_THICK - Radius;
     for (int i = 0; i < count; i++) {
-        agents[i].x = Radius + rand() % (ScreenWidth - 2 * Radius);
-        agents[i].y = UIHeight + Radius + rand() % (ScreenHeight - UIHeight - 2 * Radius);
+        agents[i].x = minX + rand() % (int)(maxX - minX);
+        agents[i].y = minY + rand() % (int)(maxY - minY);
         agents[i].vx = 0.0f;
         agents[i].vy = 0.0f;
         agents[i].speed = (500 + rand() % ((int)(MaxSpeed * 100) - 500)) / 100.0f;
         agents[i].sepVx = 0.0f;
         agents[i].sepVy = 0.0f;
-        agents[i].neighbourCount = 0;
         agents[i].alignVx = 0.0f;
         agents[i].alignVy = 0.0f;
+        agents[i].neighbourCount = 0;
+        agents[i].active = 1;
     }
 }
 
-void ComputePerception(Agent agents[], int count, int useKDTree) {
+void ComputePerception(Agent agents[], int count, int spatialMode) {
+    EnsureCapacity(count);
+
+    int activeCount = 0;
     for (int i = 0; i < count; i++) {
-        spatialBuffer[i].x = agents[i].x;
-        spatialBuffer[i].y = agents[i].y;
-        spatialBuffer[i].index = i;
+        if (!agents[i].active) continue;
+        spatialBuffer[activeCount].x = agents[i].x;
+        spatialBuffer[activeCount].y = agents[i].y;
+        spatialBuffer[activeCount].index = i;
+        activeCount++;
     }
 
-    if (useKDTree) {
-        if (!tree) tree = InitKDTree(count);
-        RebuildKDTree_InPlace(tree, spatialBuffer, count);
+    if (spatialMode == MODE_KDTREE) {
+        RebuildKDTree_InPlace(tree, spatialBuffer, activeCount);
     }
 
+    #pragma omp parallel for schedule(dynamic, 64)
     for (int i = 0; i < count; i++) {
+        if (!agents[i].active) continue;
         int neighbourCount = 0;
         agents[i].sepVx = 0;
         agents[i].sepVy = 0;
@@ -53,10 +73,10 @@ void ComputePerception(Agent agents[], int count, int useKDTree) {
 
         int results[MaxNeighbours];
 
-        if (useKDTree) {
+        if (spatialMode == MODE_KDTREE) {
             QueryKDTree(tree->root, agents[i].x, agents[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
         } else {
-            QueryBruteForce(spatialBuffer, count, agents[i].x, agents[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
+            QueryBruteForce(spatialBuffer, activeCount, agents[i].x, agents[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
         }
 
         for (int j = 0; j < neighbourCount; j++) {
@@ -78,10 +98,14 @@ void ComputePerception(Agent agents[], int count, int useKDTree) {
     }
 }
 
-void UpdatePhysics(Agent agents[], int count, float targetX, float targetY, float dt) {
+void UpdatePhysics(Agent agents[], int count, float fireX, float fireY, float exitX, float exitY, float dt) {
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < count; i++) {
-        float dx = agents[i].x - targetX;
-        float dy = agents[i].y - targetY;
+        if (!agents[i].active) continue;
+
+        // Flee from fire
+        float dx = agents[i].x - fireX;
+        float dy = agents[i].y - fireY;
         float length = sqrtf(dx * dx + dy * dy);
 
         float fleeVx = 0;
@@ -92,13 +116,23 @@ void UpdatePhysics(Agent agents[], int count, float targetX, float targetY, floa
             fleeVy = (dy / length) * agents[i].speed;
         }
 
+        // Seek exit
+        float edx = exitX - agents[i].x;
+        float edy = exitY - agents[i].y;
+        float elen = sqrtf(edx * edx + edy * edy);
+        float seekVx = 0, seekVy = 0;
+        if (elen > 0.001f) {
+            seekVx = (edx / elen) * ExitAttraction;
+            seekVy = (edy / elen) * ExitAttraction;
+        }
+
         float separationVx = agents[i].sepVx * SepMultiplier;
         float separationVy = agents[i].sepVy * SepMultiplier;
         float alignVx = agents[i].alignVx * AlignMultiplier;
         float alignVy = agents[i].alignVy * AlignMultiplier;
 
-        float desiredVx = fleeVx + separationVx + alignVx;
-        float desiredVy = fleeVy + separationVy + alignVy;
+        float desiredVx = fleeVx + separationVx + alignVx + seekVx;
+        float desiredVy = fleeVy + separationVy + alignVy + seekVy;
 
         float ax = (desiredVx - agents[i].vx) * SteeringForce;
         float ay = (desiredVy - agents[i].vy) * SteeringForce;
@@ -120,15 +154,11 @@ void UpdatePhysics(Agent agents[], int count, float targetX, float targetY, floa
 
         agents[i].x += dt * agents[i].vx;
         agents[i].y += dt * agents[i].vy;
-
-        if (agents[i].x > ScreenWidth - Radius) { agents[i].x = ScreenWidth - Radius; agents[i].vx *= -1; }
-        if (agents[i].x < Radius) { agents[i].x = Radius; agents[i].vx *= -1; }
-        if (agents[i].y > ScreenHeight - Radius) { agents[i].y = ScreenHeight - Radius; agents[i].vy *= -1; }
-        if (agents[i].y < UIHeight + Radius) { agents[i].y = UIHeight + Radius; agents[i].vy *= -1; }
     }
 }
 
 void CleanupAgents(void) {
     if (tree) { FreeKDTree(tree); tree = NULL; }
     if (spatialBuffer) { free(spatialBuffer); spatialBuffer = NULL; }
+    allocatedCapacity = 0;
 }
