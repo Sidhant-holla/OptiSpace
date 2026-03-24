@@ -8,7 +8,7 @@
 #define UIHeight 50
 
 // --- Agent Settings ---
-#define AgentCount 20000
+#define AgentCount 10000
 #define Radius 5
 #define MaxSpeed 400.0f
 #define MaxForce 400.0f
@@ -17,8 +17,10 @@
 #define MaxNeighbours 512
 
 // --- Behavior Settings ---
+#define FleeRadius 500.0f
 #define NeighbourRadius 50.0f
 #define SepMultiplier 1500.0f
 #define SteeringForce 6.0f
+#define AlignMultiplier 0.1f
 
 #endif

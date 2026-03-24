@@ -1,3 +1,9 @@
+// Agent behavior uses Reynolds flocking model with three forces:
+//   Flee       - repel from cursor 
+//   Separation - repel from nearby neighbors (inverse-square)
+//   Alignment  - steer toward average neighbor velocity
+// Forces are combined into a desired velocity, steered toward, clamped, then Euler-integrated.
+
 #include "agent.h"
 #include "config.h"
 #include "spatial.h"
@@ -10,23 +16,26 @@ static KDTree* tree = NULL;
 static SpatialPoint* spatialBuffer = NULL;
 
 void InitAgents(Agent agents[], int count) {
+    if (spatialBuffer) free(spatialBuffer);
     spatialBuffer = (SpatialPoint*)malloc(sizeof(SpatialPoint) * count);
     for (int i = 0; i < count; i++) {
         agents[i].x = Radius + rand() % (ScreenWidth - 2 * Radius);
         agents[i].y = UIHeight + Radius + rand() % (ScreenHeight - UIHeight - 2 * Radius);
         agents[i].vx = 0.0f;
         agents[i].vy = 0.0f;
-        agents[i].speed = (50 + rand() % ((int)(MaxSpeed * 100) - 50)) / 100.0f;
+        agents[i].speed = (500 + rand() % ((int)(MaxSpeed * 100) - 500)) / 100.0f;
         agents[i].sepVx = 0.0f;
         agents[i].sepVy = 0.0f;
         agents[i].neighbourCount = 0;
+        agents[i].alignVx = 0.0f;
+        agents[i].alignVy = 0.0f;
     }
 }
 
-void ComputePerception(Agent Point[], int count, int useKDTree) {
+void ComputePerception(Agent agents[], int count, int useKDTree) {
     for (int i = 0; i < count; i++) {
-        spatialBuffer[i].x = Point[i].x;
-        spatialBuffer[i].y = Point[i].y;
+        spatialBuffer[i].x = agents[i].x;
+        spatialBuffer[i].y = agents[i].y;
         spatialBuffer[i].index = i;
     }
 
@@ -37,52 +46,62 @@ void ComputePerception(Agent Point[], int count, int useKDTree) {
 
     for (int i = 0; i < count; i++) {
         int neighbourCount = 0;
-        Point[i].sepVx = 0;
-        Point[i].sepVy = 0;
+        agents[i].sepVx = 0;
+        agents[i].sepVy = 0;
+        agents[i].alignVx = 0;
+        agents[i].alignVy = 0;
 
         int results[MaxNeighbours];
 
         if (useKDTree) {
-            QueryKDTree(tree->root, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
+            QueryKDTree(tree->root, agents[i].x, agents[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
         } else {
-            QueryBruteForce(spatialBuffer, count, Point[i].x, Point[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
+            QueryBruteForce(spatialBuffer, count, agents[i].x, agents[i].y, NeighbourRadius, results, &neighbourCount, MaxNeighbours);
         }
 
         for (int j = 0; j < neighbourCount; j++) {
             int ni = results[j];
-            float dx = Point[i].x - Point[ni].x;
-            float dy = Point[i].y - Point[ni].y;
+            float dx = agents[i].x - agents[ni].x;
+            float dy = agents[i].y - agents[ni].y;
             float distSq = dx * dx + dy * dy;
-            Point[i].sepVx += dx / distSq;
-            Point[i].sepVy += dy / distSq;
+            agents[i].sepVx += dx / distSq;
+            agents[i].sepVy += dy / distSq;
+            agents[i].alignVx += agents[ni].vx;
+            agents[i].alignVy += agents[ni].vy;
+        }
+        if (neighbourCount > 0) {
+            agents[i].alignVx /= neighbourCount;
+            agents[i].alignVy /= neighbourCount;
         }
 
-        Point[i].neighbourCount = neighbourCount;
+        agents[i].neighbourCount = neighbourCount;
     }
 }
 
-void UpdatePhysics(Agent Point[], int count, float targetX, float targetY, float dt) {
+void UpdatePhysics(Agent agents[], int count, float targetX, float targetY, float dt) {
     for (int i = 0; i < count; i++) {
-        float dx = Point[i].x - targetX;
-        float dy = Point[i].y - targetY;
+        float dx = agents[i].x - targetX;
+        float dy = agents[i].y - targetY;
         float length = sqrtf(dx * dx + dy * dy);
 
         float fleeVx = 0;
         float fleeVy = 0;
 
-        if (length > 0.001f && length < 500.0f) {
-            fleeVx = (dx / length) * Point[i].speed;
-            fleeVy = (dy / length) * Point[i].speed;
+        if (length > 0.001f && length < FleeRadius) {
+            fleeVx = (dx / length) * agents[i].speed;
+            fleeVy = (dy / length) * agents[i].speed;
         }
 
-        float separationVx = Point[i].sepVx * SepMultiplier;
-        float separationVy = Point[i].sepVy * SepMultiplier;
+        float separationVx = agents[i].sepVx * SepMultiplier;
+        float separationVy = agents[i].sepVy * SepMultiplier;
+        float alignVx = agents[i].alignVx * AlignMultiplier;
+        float alignVy = agents[i].alignVy * AlignMultiplier;
 
-        float desiredVx = fleeVx + separationVx;
-        float desiredVy = fleeVy + separationVy;
+        float desiredVx = fleeVx + separationVx + alignVx;
+        float desiredVy = fleeVy + separationVy + alignVy;
 
-        float ax = (desiredVx - Point[i].vx) * SteeringForce;
-        float ay = (desiredVy - Point[i].vy) * SteeringForce;
+        float ax = (desiredVx - agents[i].vx) * SteeringForce;
+        float ay = (desiredVy - agents[i].vy) * SteeringForce;
 
         float aMag = sqrtf(ax * ax + ay * ay);
         if (aMag > MaxForce) {
@@ -90,22 +109,22 @@ void UpdatePhysics(Agent Point[], int count, float targetX, float targetY, float
             ay = (ay / aMag) * MaxForce;
         }
 
-        Point[i].vx += dt * ax;
-        Point[i].vy += dt * ay;
+        agents[i].vx += dt * ax;
+        agents[i].vy += dt * ay;
 
-        float vMag = sqrtf(Point[i].vx * Point[i].vx + Point[i].vy * Point[i].vy);
+        float vMag = sqrtf(agents[i].vx * agents[i].vx + agents[i].vy * agents[i].vy);
         if (vMag > MaxSpeed) {
-            Point[i].vx = (Point[i].vx / vMag) * MaxSpeed;
-            Point[i].vy = (Point[i].vy / vMag) * MaxSpeed;
+            agents[i].vx = (agents[i].vx / vMag) * MaxSpeed;
+            agents[i].vy = (agents[i].vy / vMag) * MaxSpeed;
         }
 
-        Point[i].x += dt * Point[i].vx;
-        Point[i].y += dt * Point[i].vy;
+        agents[i].x += dt * agents[i].vx;
+        agents[i].y += dt * agents[i].vy;
 
-        if (Point[i].x > ScreenWidth - Radius) { Point[i].x = ScreenWidth - Radius; Point[i].vx *= -1; }
-        if (Point[i].x < Radius) { Point[i].x = Radius; Point[i].vx *= -1; }
-        if (Point[i].y > ScreenHeight - Radius) { Point[i].y = ScreenHeight - Radius; Point[i].vy *= -1; }
-        if (Point[i].y < UIHeight + Radius) { Point[i].y = UIHeight + Radius; Point[i].vy *= -1; }
+        if (agents[i].x > ScreenWidth - Radius) { agents[i].x = ScreenWidth - Radius; agents[i].vx *= -1; }
+        if (agents[i].x < Radius) { agents[i].x = Radius; agents[i].vx *= -1; }
+        if (agents[i].y > ScreenHeight - Radius) { agents[i].y = ScreenHeight - Radius; agents[i].vy *= -1; }
+        if (agents[i].y < UIHeight + Radius) { agents[i].y = UIHeight + Radius; agents[i].vy *= -1; }
     }
 }
 

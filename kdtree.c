@@ -90,11 +90,11 @@ void QueryKDTree(KDNode *node, float x, float y, float radius, int* results, int
     else diff = y - node->data.y;
     if (diff <= 0){
         QueryKDTree(node->left, x, y, radius, results, count, maxResults);
-            if (fabs(diff) < radius) QueryKDTree(node->right, x, y, radius, results, count, maxResults);
+            if (fabsf(diff) < radius) QueryKDTree(node->right, x, y, radius, results, count, maxResults);
     }
     else if (diff > 0){
         QueryKDTree(node->right, x, y, radius, results, count, maxResults);
-            if (fabs(diff) < radius) QueryKDTree(node->left, x, y, radius, results, count, maxResults);
+            if (fabsf(diff) < radius) QueryKDTree(node->left, x, y, radius, results, count, maxResults);
     }
 
 }

@@ -15,5 +15,11 @@ all:
 run: all
 	./$(TARGET)
 
+benchmark:
+	$(CC) benchmark.c agent.c bruteforce.c kdtree.c -o benchmark.exe $(CFLAGS)
+
+bench: benchmark
+	./benchmark.exe
+
 clean:
-	rm $(TARGET)
+	rm -f $(TARGET) benchmark.exe

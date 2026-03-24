@@ -6,6 +6,7 @@ typedef struct {
     float vx, vy;
     float speed;
     float sepVx, sepVy;
+    float alignVx, alignVy;
     int neighbourCount;
 } Agent;
 
